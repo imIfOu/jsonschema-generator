@@ -1,0 +1,176 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "definitions": {
+        "TestClass1": {
+            "type": "object",
+            "properties": {
+                "genericArray": {
+                    "type": ["array", "null"],
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "genericValue": {
+                    "type": ["string", "null"],
+                    "title": "String",
+                    "description": "looked-up from field: String",
+                    "const": "constant string value",
+                    "minLength": 1,
+                    "maxLength": 256,
+                    "format": "date"
+                },
+                "ignoredInternalValue": {
+                    "type": ["integer", "null"],
+                    "title": "Integer",
+                    "description": "looked-up from field: Integer",
+                    "enum": [1, 2, 3, 4, 5],
+                    "minimum": 1,
+                    "exclusiveMinimum": 0,
+                    "maximum": 1E+1,
+                    "exclusiveMaximum": 11,
+                    "multipleOf": 1
+                },
+                "primitiveValue": {
+                    "type": ["integer", "null"],
+                    "title": "int",
+                    "description": "looked-up from field: int"
+                }
+            }
+        },
+        "TestClass2<Long>": {
+            "type": "object",
+            "properties": {
+                "genericArray": {
+                    "type": ["array", "null"],
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "genericValue": {
+                    "type": ["integer", "null"],
+                    "title": "Long",
+                    "description": "looked-up from field: Long",
+                    "enum": [1, 2, 3, 4, 5],
+                    "minimum": 1,
+                    "exclusiveMinimum": 0,
+                    "maximum": 1E+1,
+                    "exclusiveMaximum": 11,
+                    "multipleOf": 1
+                }
+            }
+        },
+        "TestClass2<String>": {
+            "type": "object",
+            "properties": {
+                "genericArray": {
+                    "type": ["array", "null"],
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "genericValue": {
+                    "type": ["string", "null"],
+                    "title": "String",
+                    "description": "looked-up from field: String",
+                    "const": "constant string value",
+                    "minLength": 1,
+                    "maxLength": 256,
+                    "format": "date"
+                }
+            }
+        }
+    },
+    "type": "object",
+    "properties": {
+        "class4": {
+            "allOf": [{
+                    "type": ["object", "null"],
+                    "properties": {
+                        "class2OfClass2OfT": {
+                            "allOf": [{
+                                    "type": ["object", "null"],
+                                    "properties": {
+                                        "genericArray": {
+                                            "type": ["array", "null"],
+                                            "items": {
+                                                "$ref": "#/definitions/TestClass2<String>"
+                                            }
+                                        },
+                                        "genericValue": {
+                                            "allOf": [{
+                                                    "oneOf": [{
+                                                            "type": "null"
+                                                        }, {
+                                                            "$ref": "#/definitions/TestClass2<String>"
+                                                        }]
+                                                }, {
+                                                    "title": "TestClass2<String>",
+                                                    "description": "looked-up from field: TestClass2<String>"
+                                                }]
+                                        }
+                                    }
+                                }, {
+                                    "title": "TestClass2<TestClass2<String>>",
+                                    "description": "looked-up from field: TestClass2<TestClass2<String>>"
+                                }]
+                        },
+                        "optionalT": {
+                            "type": ["string", "null"],
+                            "title": "String",
+                            "description": "looked-up from field: String",
+                            "const": "constant string value",
+                            "minLength": 1,
+                            "maxLength": 256,
+                            "format": "date"
+                        }
+                    }
+                }, {
+                    "title": "TestClass4<String>",
+                    "description": "looked-up from field: TestClass4<String>"
+                }]
+        },
+        "nestedClass1Array": {
+            "allOf": [{
+                    "type": ["object", "null"],
+                    "properties": {
+                        "genericArray": {
+                            "type": ["array", "null"],
+                            "items": {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/definitions/TestClass1"
+                                }
+                            }
+                        },
+                        "genericValue": {
+                            "type": ["array", "null"],
+                            "items": {
+                                "$ref": "#/definitions/TestClass1"
+                            }
+                        }
+                    }
+                }, {
+                    "title": "TestClass2<TestClass1[]>",
+                    "description": "looked-up from field: TestClass2<TestClass1[]>"
+                }]
+        },
+        "nestedLong": {
+            "allOf": [{
+                    "oneOf": [{
+                            "type": "null"
+                        }, {
+                            "$ref": "#/definitions/TestClass2<Long>"
+                        }]
+                }, {
+                    "title": "TestClass2<Long>",
+                    "description": "looked-up from field: TestClass2<Long>"
+                }]
+        },
+        "nestedLongList": {
+            "type": ["array", "null"],
+            "items": {
+                "$ref": "#/definitions/TestClass2<Long>"
+            }
+        }
+    }
+}

@@ -1,0 +1,34 @@
+{
+    "type": "object",
+    "properties": {
+        "CONSTANT": {
+            "type": "integer",
+            "const": 5
+        },
+        "genericArray": {
+            "type": ["array", "null"],
+            "items": {
+                "type": "string"
+            }
+        },
+        "genericValue": {
+            "type": ["string", "null"]
+        },
+        "ignoredInternalValue": {
+            "type": ["integer", "null"]
+        },
+        "primitiveValue": {
+            "type": "integer"
+        },
+        "calculateSomething(Number, Number)": false,
+        "getGenericValue()": {
+            "type": ["string", "null"]
+        },
+        "getPrimitiveValue()": {
+            "type": "integer"
+        },
+        "isSimpleTestClass()": {
+            "type": "boolean"
+        }
+    }
+}
