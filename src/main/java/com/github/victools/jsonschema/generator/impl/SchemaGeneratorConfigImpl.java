@@ -202,6 +202,11 @@ public class SchemaGeneratorConfigImpl implements SchemaGeneratorConfig {
     }
 
     @Override
+    public String resolveDescription(MethodScope method) {
+        return this.methodConfigPart.resolveDescription(method);
+    }
+
+    @Override
     public String resolveDefault(MethodScope method) {
         return this.methodConfigPart.resolveDefault(method);
     }
@@ -209,11 +214,6 @@ public class SchemaGeneratorConfigImpl implements SchemaGeneratorConfig {
     @Override
     public String resolveDefault(FieldScope field) {
         return this.fieldConfigPart.resolveDefault(field);
-    }
-
-    @Override
-    public String resolveDescription(MethodScope method) {
-        return this.methodConfigPart.resolveDescription(method);
     }
 
     @Override

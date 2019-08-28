@@ -201,6 +201,14 @@ public interface SchemaGeneratorConfig {
     String resolveDescription(FieldScope field);
 
     /**
+     * Determine the "description" of a method's return value.
+     *
+     * @param method method for whose return value to determine "description" value for
+     * @return "description" in a JSON Schema (may be null)
+     */
+    String resolveDescription(MethodScope method);
+
+    /**
      * Determine the "default" value of a method's return value.
      *
      * @param method method for whose return value to determine "default" value for
@@ -215,14 +223,6 @@ public interface SchemaGeneratorConfig {
      * @return "default" in a JSON Schema (may be null)
      */
     String resolveDefault(FieldScope field);
-
-    /**
-     * Determine the "description" of a method's return value.
-     *
-     * @param method method for whose return value to determine "description" value for
-     * @return "description" in a JSON Schema (may be null)
-     */
-    String resolveDescription(MethodScope method);
 
     /**
      * Determine the "enum"/"const" of an object's field/property.
