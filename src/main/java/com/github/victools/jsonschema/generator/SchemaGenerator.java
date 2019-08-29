@@ -242,7 +242,8 @@ public class SchemaGenerator {
                 .filter(methodScope -> this.config.isRequired(methodScope))
                 .forEach(methodScope -> {
                     String propertyNameOverride = this.config.resolvePropertyNameOverride(methodScope);
-                    MethodScope methodWithOverride = propertyNameOverride == null ? methodScope : methodScope.withOverriddenName(propertyNameOverride);
+                    MethodScope methodWithOverride =
+                            propertyNameOverride == null ? methodScope : methodScope.withOverriddenName(propertyNameOverride);
                     requiredProperties.add(methodWithOverride.getSchemaPropertyName());
                 });
     }
@@ -256,8 +257,8 @@ public class SchemaGenerator {
      * @param requiredProperties set of properties value required
      * @param generationContext  context to add type definitions and their references to (to be resolved at the end of the schema generation)
      */
-    private void collectObjectProperties(ResolvedType targetType, Map<String, JsonNode> targetFields, Map<String, JsonNode> targetMethods, Set<String> requiredProperties,
-                                         SchemaGenerationContext generationContext) {
+    private void collectObjectProperties(ResolvedType targetType, Map<String, JsonNode> targetFields, Map<String, JsonNode> targetMethods,
+                                         Set<String> requiredProperties, SchemaGenerationContext generationContext) {
         logger.debug("collecting non-static fields and methods from {}", targetType);
         final ResolvedTypeWithMembers targetTypeWithMembers = generationContext.getTypeContext().resolveWithMembers(targetType);
         // member fields and methods are being collected from the targeted type as well as its super types
@@ -284,10 +285,12 @@ public class SchemaGenerator {
                     hierarchyTypeMembers = generationContext.getTypeContext().resolveWithMembers(hierachyType);
                 }
                 if (includeStaticFields) {
-                    this.populateFields(hierarchyTypeMembers, ResolvedTypeWithMembers::getStaticFields, targetFields, requiredProperties, generationContext);
+                    this.populateFields(hierarchyTypeMembers, ResolvedTypeWithMembers::getStaticFields, targetFields,
+                            requiredProperties, generationContext);
                 }
                 if (includeStaticMethods) {
-                    this.populateMethods(hierarchyTypeMembers, ResolvedTypeWithMembers::getStaticMethods, targetMethods, requiredProperties, generationContext);
+                    this.populateMethods(hierarchyTypeMembers, ResolvedTypeWithMembers::getStaticMethods, targetMethods,
+                            requiredProperties, generationContext);
                 }
             }
         }
@@ -335,7 +338,8 @@ public class SchemaGenerator {
      * @param requiredProperties set of properties value required
      * @param generationContext  context to add type definitions and their references to (to be resolved at the end of the schema generation)
      */
-    private void populateField(FieldScope field, Map<String, JsonNode> collectedFields, Set<String> requiredProperties, SchemaGenerationContext generationContext) {
+    private void populateField(FieldScope field, Map<String, JsonNode> collectedFields, Set<String> requiredProperties,
+                               SchemaGenerationContext generationContext) {
         String propertyNameOverride = this.config.resolvePropertyNameOverride(field);
         FieldScope fieldWithOverride = propertyNameOverride == null ? field : field.withOverriddenName(propertyNameOverride);
         String propertyName = fieldWithOverride.getSchemaPropertyName();
@@ -367,7 +371,8 @@ public class SchemaGenerator {
      * @param requiredProperties set of properties value required
      * @param generationContext  context to add type definitions and their references to (to be resolved at the end of the schema generation)
      */
-    private void populateMethod(MethodScope method, Map<String, JsonNode> collectedMethods, Set<String> requiredProperties, SchemaGenerationContext generationContext) {
+    private void populateMethod(MethodScope method, Map<String, JsonNode> collectedMethods, Set<String> requiredProperties,
+                                SchemaGenerationContext generationContext) {
         String propertyNameOverride = this.config.resolvePropertyNameOverride(method);
         MethodScope methodWithOverride = propertyNameOverride == null ? method : method.withOverriddenName(propertyNameOverride);
         String propertyName = methodWithOverride.getSchemaPropertyName();
@@ -399,9 +404,9 @@ public class SchemaGenerator {
     /**
      * Preparation Step: combine the collected attributes and the javaType's definition in the given targetNode.
      *
-     * @param javaType            field's type or method return value's type that should be represented by the given targetNode
-     * @param targetNode          node in the JSON schema that should represent the associated javaType and include the separately collected attributes
-     * @param isNullable          whether the field/method's return value the javaType refers to is allowed to be null in the declaringType
+     * @param javaType field's type or method return value's type that should be represented by the given targetNode
+     * @param targetNode node in the JSON schema that should represent the associated javaType and include the separately collected attributes
+     * @param isNullable whether the field/method's return value the javaType refers to is allowed to be null in the declaringType
      * @param collectedAttributes separately collected attribute for the field/method in their respective declaring type
      * @param generationContext   context to add type definitions and their references to (to be resolved at the end of the schema generation)
      * @see #populateField(FieldScope, Map, Set, SchemaGenerationContext)
