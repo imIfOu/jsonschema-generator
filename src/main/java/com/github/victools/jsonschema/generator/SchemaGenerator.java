@@ -29,17 +29,18 @@ import com.fasterxml.jackson.databind.node.TextNode;
 import com.github.victools.jsonschema.generator.impl.AttributeCollector;
 import com.github.victools.jsonschema.generator.impl.SchemaGenerationContext;
 import com.github.victools.jsonschema.generator.impl.TypeContextFactory;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.lang.reflect.Type;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Generator for JSON Schema definitions via reflection based analysis of a given class.
@@ -63,7 +64,7 @@ public class SchemaGenerator {
     /**
      * Constructor.
      *
-     * @param config configuration to be applied
+     * @param config  configuration to be applied
      * @param context type resolution/introspection context to be used during schema generations (across multiple schema generations)
      */
     public SchemaGenerator(SchemaGeneratorConfig config, TypeContext context) {
@@ -99,13 +100,13 @@ public class SchemaGenerator {
     /**
      * Preparation Step: add the given targetType to the generation context.
      *
-     * @param targetType (possibly generic) type to add to the generation context
-     * @param targetNode node in the JSON schema to which all collected attributes should be added
-     * @param isNullable whether the field/method's return value is allowed to be null in the declaringType in this particular scenario
+     * @param targetType        (possibly generic) type to add to the generation context
+     * @param targetNode        node in the JSON schema to which all collected attributes should be added
+     * @param isNullable        whether the field/method's return value is allowed to be null in the declaringType in this particular scenario
      * @param generationContext context to add type definitions and their references to (to be resolved at the end of the schema generation)
      */
     private void traverseGenericType(ResolvedType targetType, ObjectNode targetNode, boolean isNullable,
-            SchemaGenerationContext generationContext) {
+                                     SchemaGenerationContext generationContext) {
         if (generationContext.containsDefinition(targetType)) {
             logger.debug("adding reference to existing definition of {}", targetType);
             generationContext.addReference(targetType, targetNode, isNullable);
@@ -125,14 +126,14 @@ public class SchemaGenerator {
     /**
      * Preparation Step: add the given targetType (which was previously determined to be an array type) to the generation context.
      *
-     * @param targetType (possibly generic) array type to add to the generation context
-     * @param targetNode node in the JSON schema to which all collected attributes should be added
-     * @param isNullable whether the field/method's return value the targetType refers to is allowed to be null in the declaring type
+     * @param targetType        (possibly generic) array type to add to the generation context
+     * @param targetNode        node in the JSON schema to which all collected attributes should be added
+     * @param isNullable        whether the field/method's return value the targetType refers to is allowed to be null in the declaring type
      * @param generationContext context to add type definitions and their references to (to be resolved at the end of the schema generation)
      * @return the created array node containing the array type's definition
      */
     private ObjectNode traverseArrayType(ResolvedType targetType, ObjectNode targetNode, boolean isNullable,
-            SchemaGenerationContext generationContext) {
+                                         SchemaGenerationContext generationContext) {
         final ObjectNode definition;
         if (targetNode == null) {
             // only if the main target schema is an array, do we need to store this node as definition
@@ -157,14 +158,14 @@ public class SchemaGenerator {
     /**
      * Preparation Step: add the given targetType (which was previously determined to be anything but an array type) to the generation context.
      *
-     * @param targetType object type to add to the generation context
-     * @param targetNode node in the JSON schema to which all collected attributes should be added
-     * @param isNullable whether the field/method's return value the targetType refers to is allowed to be null in the declaring type
+     * @param targetType        object type to add to the generation context
+     * @param targetNode        node in the JSON schema to which all collected attributes should be added
+     * @param isNullable        whether the field/method's return value the targetType refers to is allowed to be null in the declaring type
      * @param generationContext context to add type definitions and their references to (to be resolved at the end of the schema generation)
      * @return the created node containing the object type's definition
      */
     private ObjectNode traverseObjectType(ResolvedType targetType, ObjectNode targetNode, boolean isNullable,
-            SchemaGenerationContext generationContext) {
+                                          SchemaGenerationContext generationContext) {
         final ObjectNode definition;
         CustomDefinition customDefinition = this.config.getCustomDefinition(targetType, generationContext.getTypeContext());
         if (customDefinition != null && customDefinition.isMeantToBeInline()) {
@@ -191,15 +192,23 @@ public class SchemaGenerator {
 
                 final Map<String, JsonNode> targetFields = new TreeMap<>();
                 final Map<String, JsonNode> targetMethods = new TreeMap<>();
+                final Set<String> requiredProperties = new HashSet<>();
 
-                this.collectObjectProperties(targetType, targetFields, targetMethods, generationContext);
+                this.collectObjectProperties(targetType, targetFields, targetMethods, requiredProperties, generationContext);
 
                 if (!targetFields.isEmpty() || !targetMethods.isEmpty()) {
                     ObjectNode propertiesNode = this.config.createObjectNode();
                     propertiesNode.setAll(targetFields);
                     propertiesNode.setAll(targetMethods);
                     definition.set(SchemaConstants.TAG_PROPERTIES, propertiesNode);
+
+                    if (!requiredProperties.isEmpty()) {
+                        ArrayNode requiredNode = this.config.createArrayNode();
+                        requiredProperties.forEach(requiredNode::add);
+                        definition.set(SchemaConstants.TAG_REQUIRED, requiredNode);
+                    }
                 }
+
             } else {
                 logger.debug("applying configured custom definition for {}", targetType);
                 definition.setAll(customDefinition.getValue());
@@ -211,18 +220,49 @@ public class SchemaGenerator {
     /**
      * Recursively collect all properties of the given object type and add them to the respective maps.
      *
-     * @param targetType the type for which to collect fields and methods
-     * @param targetFields map of named JSON schema nodes representing individual fields
-     * @param targetMethods map of named JSON schema nodes representing individual methods
-     * @param generationContext context to add type definitions and their references to (to be resolved at the end of the schema generation)
+     * @param targetType         the type for which to collect fields and methods
+     * @param requiredProperties set of properties name required
+     * @param generationContext  context to add type definitions and their references to (to be resolved at the end of the schema generation)
      */
-    private void collectObjectProperties(ResolvedType targetType, Map<String, JsonNode> targetFields, Map<String, JsonNode> targetMethods,
-            SchemaGenerationContext generationContext) {
+    private void collectObjectRequired(ResolvedType targetType, Set<String> requiredProperties, SchemaGenerationContext generationContext) {
+        logger.debug("collecting required properties from {}", targetType);
+        final ResolvedTypeWithMembers targetTypeWithMembers = generationContext.getTypeContext().resolveWithMembers(targetType);
+
+        Stream.of(targetTypeWithMembers.getMemberFields())
+                .map(declaredField -> generationContext.getTypeContext().createFieldScope(declaredField, targetTypeWithMembers))
+                .filter(fieldScope -> this.config.isRequired(fieldScope))
+                .forEach(fieldScope -> {
+                    String propertyNameOverride = this.config.resolvePropertyNameOverride(fieldScope);
+                    FieldScope fieldWithOverride = propertyNameOverride == null ? fieldScope : fieldScope.withOverriddenName(propertyNameOverride);
+                    requiredProperties.add(fieldWithOverride.getSchemaPropertyName());
+                });
+
+        Stream.of(targetTypeWithMembers.getMemberMethods())
+                .map(declaredMethod -> generationContext.getTypeContext().createMethodScope(declaredMethod, targetTypeWithMembers))
+                .filter(methodScope -> this.config.isRequired(methodScope))
+                .forEach(methodScope -> {
+                    String propertyNameOverride = this.config.resolvePropertyNameOverride(methodScope);
+                    MethodScope methodWithOverride = propertyNameOverride == null ? methodScope : methodScope.withOverriddenName(propertyNameOverride);
+                    requiredProperties.add(methodWithOverride.getSchemaPropertyName());
+                });
+    }
+
+    /**
+     * Recursively collect all properties of the given object type and add them to the respective maps.
+     *
+     * @param targetType         the type for which to collect fields and methods
+     * @param targetFields       map of named JSON schema nodes representing individual fields
+     * @param targetMethods      map of named JSON schema nodes representing individual methods
+     * @param requiredProperties set of properties value required
+     * @param generationContext  context to add type definitions and their references to (to be resolved at the end of the schema generation)
+     */
+    private void collectObjectProperties(ResolvedType targetType, Map<String, JsonNode> targetFields, Map<String, JsonNode> targetMethods, Set<String> requiredProperties,
+                                         SchemaGenerationContext generationContext) {
         logger.debug("collecting non-static fields and methods from {}", targetType);
         final ResolvedTypeWithMembers targetTypeWithMembers = generationContext.getTypeContext().resolveWithMembers(targetType);
         // member fields and methods are being collected from the targeted type as well as its super types
-        this.populateFields(targetTypeWithMembers, ResolvedTypeWithMembers::getMemberFields, targetFields, generationContext);
-        this.populateMethods(targetTypeWithMembers, ResolvedTypeWithMembers::getMemberMethods, targetMethods, generationContext);
+        this.populateFields(targetTypeWithMembers, ResolvedTypeWithMembers::getMemberFields, targetFields, requiredProperties, generationContext);
+        this.populateMethods(targetTypeWithMembers, ResolvedTypeWithMembers::getMemberMethods, targetMethods, requiredProperties, generationContext);
 
         final boolean includeStaticFields = this.config.shouldIncludeStaticFields();
         final boolean includeStaticMethods = this.config.shouldIncludeStaticMethods();
@@ -244,10 +284,10 @@ public class SchemaGenerator {
                     hierarchyTypeMembers = generationContext.getTypeContext().resolveWithMembers(hierachyType);
                 }
                 if (includeStaticFields) {
-                    this.populateFields(hierarchyTypeMembers, ResolvedTypeWithMembers::getStaticFields, targetFields, generationContext);
+                    this.populateFields(hierarchyTypeMembers, ResolvedTypeWithMembers::getStaticFields, targetFields, requiredProperties, generationContext);
                 }
                 if (includeStaticMethods) {
-                    this.populateMethods(hierarchyTypeMembers, ResolvedTypeWithMembers::getStaticMethods, targetMethods, generationContext);
+                    this.populateMethods(hierarchyTypeMembers, ResolvedTypeWithMembers::getStaticMethods, targetMethods, requiredProperties, generationContext);
                 }
             }
         }
@@ -257,45 +297,51 @@ public class SchemaGenerator {
      * Preparation Step: add the designated fields to the specified {@link Map}.
      *
      * @param declaringTypeMembers the type declaring the fields to populate
-     * @param fieldLookup retrieval function for getter targeted fields from {@code declaringTypeMembers}
-     * @param collectedFields property nodes in the JSON schema to which the field sub schemas should be added
-     * @param generationContext context to add type definitions and their references to (to be resolved at the end of the schema generation)
+     * @param fieldLookup          retrieval function for getter targeted fields from {@code declaringTypeMembers}
+     * @param collectedFields      property nodes in the JSON schema to which the field sub schemas should be added
+     * @param requiredProperties   set of properties value required
+     * @param generationContext    context to add type definitions and their references to (to be resolved at the end of the schema generation)
      */
     private void populateFields(ResolvedTypeWithMembers declaringTypeMembers, Function<ResolvedTypeWithMembers, ResolvedField[]> fieldLookup,
-            Map<String, JsonNode> collectedFields, SchemaGenerationContext generationContext) {
+                                Map<String, JsonNode> collectedFields, Set<String> requiredProperties, SchemaGenerationContext generationContext) {
         Stream.of(fieldLookup.apply(declaringTypeMembers))
                 .map(declaredField -> generationContext.getTypeContext().createFieldScope(declaredField, declaringTypeMembers))
                 .filter(fieldScope -> !this.config.shouldIgnore(fieldScope))
-                .forEach(fieldScope -> this.populateField(fieldScope, collectedFields, generationContext));
+                .forEach(fieldScope -> this.populateField(fieldScope, collectedFields, requiredProperties, generationContext));
     }
 
     /**
      * Preparation Step: add the designated methods to the specified {@link Map}.
      *
      * @param declaringTypeMembers the type declaring the methods to populate
-     * @param methodLookup retrieval function for getter targeted methods from {@code declaringTypeMembers}
-     * @param collectedMethods property nodes in the JSON schema to which the method sub schemas should be added
-     * @param generationContext context to add type definitions and their references to (to be resolved at the end of the schema generation)
+     * @param methodLookup         retrieval function for getter targeted methods from {@code declaringTypeMembers}
+     * @param collectedMethods     property nodes in the JSON schema to which the method sub schemas should be added
+     * @param requiredProperties   set of properties value required
+     * @param generationContext    context to add type definitions and their references to (to be resolved at the end of the schema generation)
      */
     private void populateMethods(ResolvedTypeWithMembers declaringTypeMembers, Function<ResolvedTypeWithMembers, ResolvedMethod[]> methodLookup,
-            Map<String, JsonNode> collectedMethods, SchemaGenerationContext generationContext) {
+                                 Map<String, JsonNode> collectedMethods, Set<String> requiredProperties, SchemaGenerationContext generationContext) {
         Stream.of(methodLookup.apply(declaringTypeMembers))
                 .map(declaredMethod -> generationContext.getTypeContext().createMethodScope(declaredMethod, declaringTypeMembers))
                 .filter(methodScope -> !this.config.shouldIgnore(methodScope))
-                .forEach(methodScope -> this.populateMethod(methodScope, collectedMethods, generationContext));
+                .forEach(methodScope -> this.populateMethod(methodScope, collectedMethods, requiredProperties, generationContext));
     }
 
     /**
      * Preparation Step: add the given field to the specified {@link Map}.
      *
-     * @param field declared field that should be added to the specified node
-     * @param collectedFields node in the JSON schema to which the field's sub schema should be added as property
-     * @param generationContext context to add type definitions and their references to (to be resolved at the end of the schema generation)
+     * @param field              declared field that should be added to the specified node
+     * @param collectedFields    node in the JSON schema to which the field's sub schema should be added as property
+     * @param requiredProperties set of properties value required
+     * @param generationContext  context to add type definitions and their references to (to be resolved at the end of the schema generation)
      */
-    private void populateField(FieldScope field, Map<String, JsonNode> collectedFields, SchemaGenerationContext generationContext) {
+    private void populateField(FieldScope field, Map<String, JsonNode> collectedFields, Set<String> requiredProperties, SchemaGenerationContext generationContext) {
         String propertyNameOverride = this.config.resolvePropertyNameOverride(field);
         FieldScope fieldWithOverride = propertyNameOverride == null ? field : field.withOverriddenName(propertyNameOverride);
         String propertyName = fieldWithOverride.getSchemaPropertyName();
+        if (this.config.isRequired(field)) {
+            requiredProperties.add(propertyName);
+        }
         if (collectedFields.containsKey(propertyName)) {
             logger.debug("ignoring overridden {}.{}", fieldWithOverride.getDeclaringType(), fieldWithOverride.getDeclaredName());
             return;
@@ -316,14 +362,18 @@ public class SchemaGenerator {
     /**
      * Preparation Step: add the given method to the specified {@link Map}.
      *
-     * @param method declared method that should be added to the specified node
-     * @param collectedMethods node in the JSON schema to which the method's (and its return value's) sub schema should be added as property
-     * @param generationContext context to add type definitions and their references to (to be resolved at the end of the schema generation)
+     * @param method             declared method that should be added to the specified node
+     * @param collectedMethods   node in the JSON schema to which the method's (and its return value's) sub schema should be added as property
+     * @param requiredProperties set of properties value required
+     * @param generationContext  context to add type definitions and their references to (to be resolved at the end of the schema generation)
      */
-    private void populateMethod(MethodScope method, Map<String, JsonNode> collectedMethods, SchemaGenerationContext generationContext) {
+    private void populateMethod(MethodScope method, Map<String, JsonNode> collectedMethods, Set<String> requiredProperties, SchemaGenerationContext generationContext) {
         String propertyNameOverride = this.config.resolvePropertyNameOverride(method);
         MethodScope methodWithOverride = propertyNameOverride == null ? method : method.withOverriddenName(propertyNameOverride);
         String propertyName = methodWithOverride.getSchemaPropertyName();
+        if (this.config.isRequired(method)) {
+            requiredProperties.add(propertyName);
+        }
         if (collectedMethods.containsKey(propertyName)) {
             logger.debug("ignoring overridden {}.{}", methodWithOverride.getDeclaringType(), methodWithOverride.getDeclaredName());
             return;
@@ -349,16 +399,16 @@ public class SchemaGenerator {
     /**
      * Preparation Step: combine the collected attributes and the javaType's definition in the given targetNode.
      *
-     * @param javaType field's type or method return value's type that should be represented by the given targetNode
-     * @param targetNode node in the JSON schema that should represent the associated javaType and include the separately collected attributes
-     * @param isNullable whether the field/method's return value the javaType refers to is allowed to be null in the declaringType
+     * @param javaType            field's type or method return value's type that should be represented by the given targetNode
+     * @param targetNode          node in the JSON schema that should represent the associated javaType and include the separately collected attributes
+     * @param isNullable          whether the field/method's return value the javaType refers to is allowed to be null in the declaringType
      * @param collectedAttributes separately collected attribute for the field/method in their respective declaring type
-     * @param generationContext context to add type definitions and their references to (to be resolved at the end of the schema generation)
-     * @see #populateField(Field, Type, ObjectNode, Map, SchemaGenerationContext)
-     * @see #populateMethod(Method, Type, ObjectNode, Map, SchemaGenerationContext)
+     * @param generationContext   context to add type definitions and their references to (to be resolved at the end of the schema generation)
+     * @see #populateField(FieldScope, Map, Set, SchemaGenerationContext)
+     * @see #populateMethod(MethodScope, Map, Set, SchemaGenerationContext)
      */
     private void populateSchema(ResolvedType javaType, ObjectNode targetNode, boolean isNullable,
-            ObjectNode collectedAttributes, SchemaGenerationContext generationContext) {
+                                ObjectNode collectedAttributes, SchemaGenerationContext generationContext) {
         // create an "allOf" wrapper for the attributes related to this particular field and its general type
         ObjectNode referenceContainer;
         CustomDefinition customDefinition = this.config.getCustomDefinition(javaType, generationContext.getTypeContext());
@@ -441,7 +491,7 @@ public class SchemaGenerator {
      * Finalisation Step: collect the entries for the generated schema's "definitions" and ensure that all references are either pointing to the
      * appropriate definition or contain the respective (sub) schema directly inline.
      *
-     * @param mainSchemaTarget main type for which generateSchema() was invoked
+     * @param mainSchemaTarget  main type for which generateSchema() was invoked
      * @param generationContext context containing all definitions of (sub) schemas and the list of references to them
      * @return node representing the main schema's "definitions" (may be empty)
      */

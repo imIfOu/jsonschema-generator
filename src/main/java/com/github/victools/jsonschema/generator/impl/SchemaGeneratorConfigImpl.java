@@ -335,4 +335,14 @@ public class SchemaGeneratorConfigImpl implements SchemaGeneratorConfig {
     public Boolean resolveArrayUniqueItems(MethodScope method) {
         return this.methodConfigPart.resolveArrayUniqueItems(method);
     }
+
+    @Override
+    public boolean isRequired(FieldScope field) {
+        return this.fieldConfigPart.isRequired(field);
+    }
+
+    @Override
+    public boolean isRequired(MethodScope method) {
+        return this.methodConfigPart.isRequired(method);
+    }
 }

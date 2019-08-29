@@ -415,4 +415,21 @@ public interface SchemaGeneratorConfig {
      * @return "uniqueItems" in a JSON Schema (may be null)
      */
     Boolean resolveArrayUniqueItems(MethodScope method);
+
+
+    /**
+     * Check whether a field/property value is required.
+     *
+     * @param field object's field/property to check
+     * @return whether the field/property value should be required
+     */
+    boolean isRequired(FieldScope field);
+
+    /**
+     * Check whether a method value is required.
+     *
+     * @param method method to check
+     * @return whether the method value should be required
+     */
+    boolean isRequired(MethodScope method);
 }

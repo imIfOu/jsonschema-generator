@@ -17,6 +17,7 @@
 package com.github.victools.jsonschema.generator;
 
 import com.fasterxml.classmate.ResolvedType;
+
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -37,10 +38,10 @@ public class SchemaGeneratorConfigPart<M extends MemberScope<?, ?>> {
     /**
      * Helper function for invoking a given function with the provided inputs or returning null no function returning anything but null themselves.
      *
-     * @param <M> type of the provided member (to be forwarded as parameter to the given function)
-     * @param <R> type of the expected return value (of the given function)
+     * @param <M>       type of the provided member (to be forwarded as parameter to the given function)
+     * @param <R>       type of the expected return value (of the given function)
      * @param resolvers functions to invoke and return the first non-null result from
-     * @param member member (to be forwarded as first argument to a given function)
+     * @param member    member (to be forwarded as first argument to a given function)
      * @return return value of successfully invoked function or null
      */
     private static <M extends MemberScope<?, ?>, R> R getFirstDefinedValue(List<ConfigFunction<M, R>> resolvers, M member) {
@@ -57,6 +58,7 @@ public class SchemaGeneratorConfigPart<M extends MemberScope<?, ?>> {
      * Customising options for properties in a schema with "type": object; either skipping them completely or also allowing for "type": "null".
      */
     private final List<Predicate<M>> ignoreChecks = new ArrayList<>();
+    private final List<Predicate<M>> requiredValue = new ArrayList<>();
     private final List<ConfigFunction<M, Boolean>> nullableChecks = new ArrayList<>();
 
     /*
@@ -268,6 +270,7 @@ public class SchemaGeneratorConfigPart<M extends MemberScope<?, ?>> {
     public String resolveDefault(M member) {
         return getFirstDefinedValue(this.defaultResolvers, member);
     }
+
 
     /**
      * Setter for "enum"/"const" resolver.
@@ -519,5 +522,26 @@ public class SchemaGeneratorConfigPart<M extends MemberScope<?, ?>> {
      */
     public Boolean resolveArrayUniqueItems(M member) {
         return getFirstDefinedValue(this.arrayUniqueItemsResolvers, member);
+    }
+
+    /**
+     * Setter for required value.
+     *
+     * @param check how to determine whether a given reference should have required value
+     * @return this config part (for chaining)
+     */
+    public SchemaGeneratorConfigPart<M> withRequired(Predicate<M> check) {
+        this.requiredValue.add(check);
+        return this;
+    }
+
+    /**
+     * Determine whether a given member should have required value.
+     *
+     * @param member member to check
+     * @return whether the member should have required value (defaults to false)
+     */
+    public boolean isRequired(M member) {
+        return this.requiredValue.stream().anyMatch(check -> check.test(member));
     }
 }
