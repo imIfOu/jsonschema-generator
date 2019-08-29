@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Predicate;
@@ -74,6 +75,7 @@ public class SchemaGeneratorConfigPart<M extends MemberScope<?, ?>> {
     private final List<ConfigFunction<M, String>> descriptionResolvers = new ArrayList<>();
     private final List<ConfigFunction<M, String>> defaultResolvers = new ArrayList<>();
     private final List<ConfigFunction<M, Collection<?>>> enumResolvers = new ArrayList<>();
+    private final List<ConfigFunction<M, Map<String, String>>> metadatas = new ArrayList<>();
 
     /*
      * Validation fields relating to a schema with "type": "string".
@@ -543,5 +545,26 @@ public class SchemaGeneratorConfigPart<M extends MemberScope<?, ?>> {
      */
     public boolean isRequired(M member) {
         return this.requiredValue.stream().anyMatch(check -> check.test(member));
+    }
+
+    /**
+     * Setter for metadata resolver.
+     *
+     * @param resolver how to determine the "enum"/"const" of a JSON Schema
+     * @return this config part (for chaining)
+     */
+    public SchemaGeneratorConfigPart<M> withMetadata(ConfigFunction<M, Map<String, String>> resolver) {
+        this.metadatas.add(resolver);
+        return this;
+    }
+
+    /**
+     * Determine the metadata of a given member.
+     *
+     * @param member member to determine metadata values for
+     * @return Map of metadata in a JSON Schema
+     */
+    public Map<String, String> resolveMetadata(M member) {
+        return getFirstDefinedValue(this.metadatas, member);
     }
 }

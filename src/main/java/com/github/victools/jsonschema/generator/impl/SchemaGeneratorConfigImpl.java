@@ -30,6 +30,7 @@ import com.github.victools.jsonschema.generator.SchemaGeneratorConfig;
 import com.github.victools.jsonschema.generator.SchemaGeneratorConfigPart;
 import com.github.victools.jsonschema.generator.TypeAttributeOverride;
 import com.github.victools.jsonschema.generator.TypeContext;
+
 import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.Collections;
@@ -53,19 +54,19 @@ public class SchemaGeneratorConfigImpl implements SchemaGeneratorConfig {
     /**
      * Constructor of a configuration instance.
      *
-     * @param objectMapper supplier for object and array nodes for the JSON structure being generated
-     * @param options specifically configured settings/options (thereby overriding the default enabled/disabled flag)
-     * @param fieldConfigPart configuration part for fields
-     * @param methodConfigPart configuration part for methods
-     * @param customDefinitions custom suppliers for a type's schema definition
+     * @param objectMapper           supplier for object and array nodes for the JSON structure being generated
+     * @param options                specifically configured settings/options (thereby overriding the default enabled/disabled flag)
+     * @param fieldConfigPart        configuration part for fields
+     * @param methodConfigPart       configuration part for methods
+     * @param customDefinitions      custom suppliers for a type's schema definition
      * @param typeAttributeOverrides applicable type attribute overrides
      */
     public SchemaGeneratorConfigImpl(ObjectMapper objectMapper,
-            Map<Option, Boolean> options,
-            SchemaGeneratorConfigPart<FieldScope> fieldConfigPart,
-            SchemaGeneratorConfigPart<MethodScope> methodConfigPart,
-            List<CustomDefinitionProvider> customDefinitions,
-            List<TypeAttributeOverride> typeAttributeOverrides) {
+                                     Map<Option, Boolean> options,
+                                     SchemaGeneratorConfigPart<FieldScope> fieldConfigPart,
+                                     SchemaGeneratorConfigPart<MethodScope> methodConfigPart,
+                                     List<CustomDefinitionProvider> customDefinitions,
+                                     List<TypeAttributeOverride> typeAttributeOverrides) {
         this.objectMapper = objectMapper;
         this.options = options;
         this.fieldConfigPart = fieldConfigPart;
@@ -344,5 +345,15 @@ public class SchemaGeneratorConfigImpl implements SchemaGeneratorConfig {
     @Override
     public boolean isRequired(MethodScope method) {
         return this.methodConfigPart.isRequired(method);
+    }
+
+    @Override
+    public Map<String, String> resolveMetadata(FieldScope field) {
+        return this.fieldConfigPart.resolveMetadata(field);
+    }
+
+    @Override
+    public Map<String, String> resolveMetadata(MethodScope method) {
+        return this.methodConfigPart.resolveMetadata(method);
     }
 }

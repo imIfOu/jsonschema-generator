@@ -20,16 +20,18 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.github.victools.jsonschema.generator.SchemaConstants;
-import com.github.victools.jsonschema.generator.SchemaGeneratorConfig;
 import com.github.victools.jsonschema.generator.FieldScope;
 import com.github.victools.jsonschema.generator.MethodScope;
+import com.github.victools.jsonschema.generator.SchemaConstants;
+import com.github.victools.jsonschema.generator.SchemaGeneratorConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Helper class for looking-up various attribute values for a field or method via a given configuration instance.
@@ -52,7 +54,7 @@ public class AttributeCollector {
     /**
      * Collect a field's contextual attributes (i.e. everything not related to the structure).
      *
-     * @param field the field for which to collect JSON schema attributes
+     * @param field  the field for which to collect JSON schema attributes
      * @param config configuration to apply when looking-up attribute values
      * @return node holding all collected attributes (possibly empty)
      */
@@ -61,7 +63,7 @@ public class AttributeCollector {
         AttributeCollector collector = new AttributeCollector(config.getObjectMapper());
         collector.setTitle(node, config.resolveTitle(field));
         collector.setDescription(node, config.resolveDescription(field));
-        collector.setDefault(node,config.resolveDefault(field));
+        collector.setDefault(node, config.resolveDefault(field));
         collector.setEnum(node, config.resolveEnum(field));
         collector.setStringMinLength(node, config.resolveStringMinLength(field));
         collector.setStringMaxLength(node, config.resolveStringMaxLength(field));
@@ -74,6 +76,7 @@ public class AttributeCollector {
         collector.setArrayMinItems(node, config.resolveArrayMinItems(field));
         collector.setArrayMaxItems(node, config.resolveArrayMaxItems(field));
         collector.setArrayUniqueItems(node, config.resolveArrayUniqueItems(field));
+        collector.setMetadata(node, config.resolveMetadata(field));
         config.getFieldAttributeOverrides()
                 .forEach(override -> override.overrideInstanceAttributes(node, field));
         return node;
@@ -91,7 +94,7 @@ public class AttributeCollector {
         AttributeCollector collector = new AttributeCollector(config.getObjectMapper());
         collector.setTitle(node, config.resolveTitle(method));
         collector.setDescription(node, config.resolveDescription(method));
-        collector.setDefault(node,config.resolveDefault(method));
+        collector.setDefault(node, config.resolveDefault(method));
         collector.setEnum(node, config.resolveEnum(method));
         collector.setStringMinLength(node, config.resolveStringMinLength(method));
         collector.setStringMaxLength(node, config.resolveStringMaxLength(method));
@@ -104,6 +107,7 @@ public class AttributeCollector {
         collector.setArrayMinItems(node, config.resolveArrayMinItems(method));
         collector.setArrayMaxItems(node, config.resolveArrayMaxItems(method));
         collector.setArrayUniqueItems(node, config.resolveArrayUniqueItems(method));
+        collector.setMetadata(node, config.resolveMetadata(method));
         config.getMethodAttributeOverrides()
                 .forEach(override -> override.overrideInstanceAttributes(node, method));
         return node;
@@ -112,7 +116,7 @@ public class AttributeCollector {
     /**
      * Setter for "{@value SchemaConstants#TAG_TITLE}" attribute.
      *
-     * @param node schema node to set attribute on
+     * @param node  schema node to set attribute on
      * @param title attribute value to set
      * @return this instance (for chaining)
      */
@@ -126,7 +130,7 @@ public class AttributeCollector {
     /**
      * Setter for "{@value SchemaConstants#TAG_DESCRIPTION}" attribute.
      *
-     * @param node schema node to set attribute on
+     * @param node        schema node to set attribute on
      * @param description attribute value to set
      * @return this instance (for chaining)
      */
@@ -140,7 +144,7 @@ public class AttributeCollector {
     /**
      * Setter for "{@value SchemaConstants#TAG_DEFAULT}" attribute.
      *
-     * @param node schema node to set attribute on
+     * @param node   schema node to set attribute on
      * @param format attribute value to set
      * @return this instance (for chaining)
      */
@@ -154,7 +158,7 @@ public class AttributeCollector {
     /**
      * Setter for "{@value SchemaConstants#TAG_CONST}"/"{@value SchemaConstants#TAG_ENUM}" attribute.
      *
-     * @param node schema node to set attribute on
+     * @param node       schema node to set attribute on
      * @param enumValues attribute value to set
      * @return this instance (for chaining)
      */
@@ -211,7 +215,7 @@ public class AttributeCollector {
     /**
      * Setter for "{@value SchemaConstants#TAG_LENGTH_MIN}" attribute.
      *
-     * @param node schema node to set attribute on
+     * @param node      schema node to set attribute on
      * @param minLength attribute value to set
      * @return this instance (for chaining)
      */
@@ -225,7 +229,7 @@ public class AttributeCollector {
     /**
      * Setter for "{@value SchemaConstants#TAG_LENGTH_MAX}" attribute.
      *
-     * @param node schema node to set attribute on
+     * @param node      schema node to set attribute on
      * @param maxLength attribute value to set
      * @return this instance (for chaining)
      */
@@ -239,7 +243,7 @@ public class AttributeCollector {
     /**
      * Setter for "{@value SchemaConstants#TAG_FORMAT}" attribute.
      *
-     * @param node schema node to set attribute on
+     * @param node   schema node to set attribute on
      * @param format attribute value to set
      * @return this instance (for chaining)
      */
@@ -253,7 +257,7 @@ public class AttributeCollector {
     /**
      * Setter for "{@value SchemaConstants#TAG_MINIMUM}" attribute.
      *
-     * @param node schema node to set attribute on
+     * @param node             schema node to set attribute on
      * @param inclusiveMinimum attribute value to set
      * @return this instance (for chaining)
      */
@@ -267,7 +271,7 @@ public class AttributeCollector {
     /**
      * Setter for "{@value SchemaConstants#TAG_MINIMUM_EXCLUSIVE}" attribute.
      *
-     * @param node schema node to set attribute on
+     * @param node             schema node to set attribute on
      * @param exclusiveMinimum attribute value to set
      * @return this instance (for chaining)
      */
@@ -281,7 +285,7 @@ public class AttributeCollector {
     /**
      * Setter for "{@value SchemaConstants#TAG_MAXIMUM}" attribute.
      *
-     * @param node schema node to set attribute on
+     * @param node             schema node to set attribute on
      * @param inclusiveMaximum attribute value to set
      * @return this instance (for chaining)
      */
@@ -295,7 +299,7 @@ public class AttributeCollector {
     /**
      * Setter for "{@value SchemaConstants#TAG_MAXIMUM_EXCLUSIVE}" attribute.
      *
-     * @param node schema node to set attribute on
+     * @param node             schema node to set attribute on
      * @param exclusiveMaximum attribute value to set
      * @return this instance (for chaining)
      */
@@ -309,7 +313,7 @@ public class AttributeCollector {
     /**
      * Setter for "{@value SchemaConstants#TAG_MULTIPLE_OF}" attribute.
      *
-     * @param node schema node to set attribute on
+     * @param node       schema node to set attribute on
      * @param multipleOf attribute value to set
      * @return this instance (for chaining)
      */
@@ -323,7 +327,7 @@ public class AttributeCollector {
     /**
      * Setter for "{@value SchemaConstants#TAG_ITEMS_MIN}" attribute.
      *
-     * @param node schema node to set attribute on
+     * @param node         schema node to set attribute on
      * @param minItemCount attribute value to set
      * @return this instance (for chaining)
      */
@@ -337,7 +341,7 @@ public class AttributeCollector {
     /**
      * Setter for "{@value SchemaConstants#TAG_ITEMS_MAX}" attribute.
      *
-     * @param node schema node to set attribute on
+     * @param node         schema node to set attribute on
      * @param maxItemCount attribute value to set
      * @return this instance (for chaining)
      */
@@ -351,13 +355,27 @@ public class AttributeCollector {
     /**
      * Setter for "{@value SchemaConstants#TAG_ITEMS_UNIQUE}" attribute.
      *
-     * @param node schema node to set attribute on
+     * @param node        schema node to set attribute on
      * @param uniqueItems attribute value to set
      * @return this instance (for chaining)
      */
     public AttributeCollector setArrayUniqueItems(ObjectNode node, Boolean uniqueItems) {
         if (uniqueItems != null) {
             node.put(SchemaConstants.TAG_ITEMS_UNIQUE, uniqueItems);
+        }
+        return this;
+    }
+
+    /**
+     * Setter for metadata attribute.
+     *
+     * @param node     schema node to set attribute on
+     * @param metadata metadata attribute value to set
+     * @return this instance (for chaining)
+     */
+    public AttributeCollector setMetadata(ObjectNode node, Map<String, String> metadata) {
+        if (metadata != null && !metadata.isEmpty()) {
+            metadata.entrySet().forEach(x -> node.put(x.getKey(), x.getValue()));
         }
         return this;
     }

@@ -20,9 +20,11 @@ import com.fasterxml.classmate.ResolvedType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+
 import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Default implementation of a schema generator's configuration.
@@ -86,7 +88,7 @@ public interface SchemaGeneratorConfig {
      * Look-up the non-standard JSON schema definition for a given type. If this returns null, the standard behaviour is expected to be applied.
      *
      * @param javaType generic type to provide custom definition for
-     * @param context overall type resolution context being used
+     * @param context  overall type resolution context being used
      * @return non-standard JSON schema definition (may be null)
      */
     CustomDefinition getCustomDefinition(ResolvedType javaType, TypeContext context);
@@ -432,4 +434,20 @@ public interface SchemaGeneratorConfig {
      * @return whether the method value should be required
      */
     boolean isRequired(MethodScope method);
+
+    /**
+     * Determine the metadata of an object's field/property.
+     *
+     * @param field object's field/property to determine metadata value for
+     * @return "enum"/"const" in a JSON Schema (may be null)
+     */
+    Map<String, String> resolveMetadata(FieldScope field);
+
+    /**
+     * Determine the metadata of a method's return value.
+     *
+     * @param method method for whose return value to determine metadata value for
+     * @return metadata in a JSON Schema (may be null)
+     */
+    Map<String, String> resolveMetadata(MethodScope method);
 }
